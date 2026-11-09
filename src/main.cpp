@@ -35,27 +35,48 @@ static void showScreen(const String& line1, const String& line2 = "", const Stri
 }
 
 static String generateApPassword() {
-    // A fresh per-boot credential avoids shipping a shared, public default.
+    // Call only after Wi-Fi has been enabled: ESP32 hardware RNG then has
+    // an entropy source suitable for generating the per-boot AP credential.
     static const char alphabet[] = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
     constexpr size_t passwordLength = 16;
+    constexpr size_t alphabetLength = sizeof(alphabet) - 1;
     String password;
     password.reserve(passwordLength);
-    const size_t alphabetLength = sizeof(alphabet) - 1;
     for (size_t i = 0; i < passwordLength; ++i) {
         password += alphabet[esp_random() % alphabetLength];
     }
     return password;
 }
 
-static void runScan() {
-    showScreen("Scanning Wi-Fi...");
+static bool requestWifiScan(const char* source) {
+    if (state.wifiScanRunning) return false;
+    if (!networkMonitor.startScan()) {
+        state.lastScanMs = millis();
+        logger.log("ERROR", String(source) + ": unable to start Wi-Fi scan");
+        return false;
+    }
     state.wifiScanRunning = true;
-    int found = networkMonitor.scan(networks);
-    state.networkCount = found > 0 ? found : 0;
-    state.lastScanMs = millis();
+    showScreen("Scanning Wi-Fi...");
+    logger.log("INFO", String(source) + ": Wi-Fi scan started");
+    return true;
+}
+
+static void pollWifiScan() {
+    if (!state.wifiScanRunning) return;
+    const int result = networkMonitor.pollScan(networks);
+    if (result == NetworkMonitor::SCAN_RUNNING) return;
+
     state.wifiScanRunning = false;
-    logger.log(found >= 0 ? "INFO" : "ERROR", "Wi-Fi scan finished; networks=" + String(found));
-    showScreen("Scan complete", "Networks: " + String(state.networkCount), "Dashboard: see serial");
+    state.lastScanMs = millis();
+    if (result == NetworkMonitor::SCAN_FAILED) {
+        logger.log("ERROR", "Wi-Fi scan failed; retaining previous results");
+        showScreen("Wi-Fi scan failed");
+        return;
+    }
+
+    state.networkCount = result;
+    logger.log("INFO", "Wi-Fi scan complete; networks=" + String(result));
+    showScreen("Scan complete", "Networks: " + String(result), "Dashboard: see serial");
 }
 
 void setup() {
@@ -67,36 +88,41 @@ void setup() {
     state.oledReady = display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS);
     if (state.oledReady) showScreen("Booting...");
 
-    if (!logger.begin()) Serial.println("WARNING: LittleFS init failed");
-    logger.log("INFO", "Device boot");
+    if (!logger.begin()) Serial.println("WARNING: LittleFS unavailable; log persistence disabled");
+    logger.log("INFO", "Device boot; filesystem mounted without auto-format");
 
-    networkMonitor.begin();
-
-    // The setup AP is local-only. Its random password changes on every reboot.
+    // Enable the radio before using esp_random() for the AP credential.
+    WiFi.mode(WIFI_AP_STA);
     const char* apName = "CyberLab-Setup";
     String apPassword = generateApPassword();
-    WiFi.mode(WIFI_AP_STA);
-    bool apOk = WiFi.softAP(apName, apPassword.c_str());
-    IPAddress ip = WiFi.softAPIP();
+    const bool apOk = WiFi.softAP(apName, apPassword.c_str());
+    const IPAddress ip = WiFi.softAPIP();
 
     Serial.printf("Setup AP: %s\n", apName);
-    Serial.printf("Dashboard login: admin / %s\n", apPassword.c_str());
-    Serial.print("Dashboard: http://");
-    Serial.println(ip);
-    Serial.println("Keep this credential private; it changes after reboot.");
+    if (apOk) {
+        Serial.printf("Dashboard login: admin / %s\n", apPassword.c_str());
+        Serial.print("Dashboard: http://");
+        Serial.println(ip);
+        Serial.println("Keep this credential private; it changes after reboot.");
+        webUI.begin(&logger, &networks, &state.lastHash, &networkMonitor, &state, apPassword);
+    } else {
+        Serial.println("ERROR: Setup AP failed; dashboard is unavailable.");
+        showScreen("AP startup failed", "Check power / radio");
+    }
 
-    logger.log(apOk ? "INFO" : "ERROR", "Setup access point initialization");
-    webUI.begin(&logger, &networks, &state.lastHash, &networkMonitor, &state, &apPassword);
-
-    runScan();
-    showScreen("Ready", "AP: CyberLab-Setup", ip.toString());
+    networkMonitor.begin();
+    if (apOk) requestWifiScan("Boot");
+    showScreen(apOk ? "Ready" : "AP startup failed",
+               apOk ? "AP: CyberLab-Setup" : "Dashboard offline",
+               ip.toString());
 }
 
 void loop() {
     webUI.handleClient();
+    pollWifiScan();
 
     if (!state.wifiScanRunning && millis() - state.lastScanMs >= WIFI_SCAN_INTERVAL_MS) {
-        runScan();
+        requestWifiScan("Scheduled");
     }
 
     // Serial CLI: type "scan", "status", "hash <text>", or "logs".
@@ -105,10 +131,11 @@ void loop() {
         command.trim();
 
         if (command == "scan") {
-            runScan();
+            if (!requestWifiScan("Serial")) Serial.println("Scan already running or could not start.");
         } else if (command == "status") {
-            Serial.printf("Uptime: %lu ms | Free heap: %u | Networks: %d\n",
-                          millis(), ESP.getFreeHeap(), state.networkCount);
+            Serial.printf("Uptime: %lu ms | Free heap: %u | Networks: %d | Scan: %s\n",
+                          millis(), ESP.getFreeHeap(), state.networkCount,
+                          state.wifiScanRunning ? "running" : "idle");
         } else if (command.startsWith("hash ")) {
             String value = command.substring(5);
             state.lastHash = sha256Hex(value);
