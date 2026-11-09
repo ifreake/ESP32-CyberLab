@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <WiFi.h>
+#include <esp_system.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <vector>
@@ -33,6 +34,19 @@ static void showScreen(const String& line1, const String& line2 = "", const Stri
     display.display();
 }
 
+static String generateApPassword() {
+    // A fresh per-boot credential avoids shipping a shared, public default.
+    static const char alphabet[] = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+    constexpr size_t passwordLength = 16;
+    String password;
+    password.reserve(passwordLength);
+    const size_t alphabetLength = sizeof(alphabet) - 1;
+    for (size_t i = 0; i < passwordLength; ++i) {
+        password += alphabet[esp_random() % alphabetLength];
+    }
+    return password;
+}
+
 static void runScan() {
     showScreen("Scanning Wi-Fi...");
     state.wifiScanRunning = true;
@@ -58,20 +72,21 @@ void setup() {
 
     networkMonitor.begin();
 
-    // The dashboard is hosted on the ESP32's own setup access point.
-    // Change the password before public deployment.
+    // The setup AP is local-only. Its random password changes on every reboot.
     const char* apName = "CyberLab-Setup";
-    const char* apPassword = "LabSetup-2026";
+    String apPassword = generateApPassword();
     WiFi.mode(WIFI_AP_STA);
-    bool apOk = WiFi.softAP(apName, apPassword);
+    bool apOk = WiFi.softAP(apName, apPassword.c_str());
     IPAddress ip = WiFi.softAPIP();
 
-    Serial.printf("Setup AP: %s\nPassword: %s\n", apName, apPassword);
+    Serial.printf("Setup AP: %s\n", apName);
+    Serial.printf("Dashboard login: admin / %s\n", apPassword.c_str());
     Serial.print("Dashboard: http://");
     Serial.println(ip);
+    Serial.println("Keep this credential private; it changes after reboot.");
 
     logger.log(apOk ? "INFO" : "ERROR", "Setup access point initialization");
-    webUI.begin(&logger, &networks, &state.lastHash);
+    webUI.begin(&logger, &networks, &state.lastHash, &networkMonitor, &state, &apPassword);
 
     runScan();
     showScreen("Ready", "AP: CyberLab-Setup", ip.toString());
