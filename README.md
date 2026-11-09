@@ -177,16 +177,41 @@ Example:
 
 ## 🗂️ Project Layout
 
-The project documentation describes these main areas:
+```text
+ESP32-CyberLab/
+├── .gitignore
+├── LICENSE
+├── README.md
+├── platformio.ini
+├── docs/
+│   └── ARCHITECTURE.md
+├── hardware/
+│   └── BOM.md
+├── include/
+│   ├── app_state.h
+│   ├── config.h
+│   ├── crypto_lab.h
+│   ├── logger.h
+│   ├── network_monitor.h
+│   └── web_ui.h
+├── src/
+│   ├── crypto_lab.cpp
+│   ├── logger.cpp
+│   ├── main.cpp
+│   ├── network_monitor.cpp
+│   └── web_ui.cpp
+└── test/
+    └── TEST_PLAN.md
+```
 
-| Path | Purpose |
+| Folder / file | Purpose |
 |---|---|
-| `platformio.ini` | PlatformIO board, framework, build, and monitor settings |
-| `src/` | Firmware source files |
 | `include/` | Shared headers and configuration |
-| `docs/` | Architecture and development notes |
-| `hardware/` | Wiring and bill of materials |
+| `src/` | Firmware implementation files |
+| `docs/` | Architecture and development documentation |
+| `hardware/` | Bill of materials and wiring notes |
 | `test/` | Test plan and future automated tests |
+| `platformio.ini` | PlatformIO board, framework, build, and monitor settings |
 
 ## 🛡️ Security Notes
 
