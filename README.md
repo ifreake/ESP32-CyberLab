@@ -23,6 +23,7 @@ A compact educational platform for defensive IoT security, network diagnostics, 
 ## 🧭 Contents
 
 - [✨ Features](#-features)
+- [🧭 Suggested Workflows](#-suggested-workflows)
 - [🧰 Required Hardware](#-required-hardware)
 - [🧩 Optional Hardware](#-optional-hardware)
 - [🔌 OLED Wiring](#-oled-wiring-optional)
@@ -57,6 +58,49 @@ A compact educational platform for defensive IoT security, network diagnostics, 
 - Filesystem: **LittleFS**
 
 </details>
+
+## 🧭 Suggested Workflows
+
+Try these workflows to explore the documented ESP32-CyberLab features. Use only your own devices and networks or systems you have permission to assess.
+
+### 1. 🚀 First-Time Setup
+1. Connect the ESP32-S3 DevKitC-1 to your computer with a USB data cable.
+2. Open the repository in VS Code with the PlatformIO extension installed.
+3. Build the firmware with `pio run`.
+4. Upload it with `pio run -t upload`.
+5. Open the serial monitor at **115200 baud** with `pio device monitor`.
+
+### 2. 📡 Wi-Fi Network Discovery
+1. Power on the ESP32-S3 and connect to the documented `CyberLab-Setup` access point.
+2. Open the local dashboard at [http://192.168.4.1](http://192.168.4.1).
+3. Use the documented `scan` serial command to run a Wi-Fi scan.
+4. Review the reported SSID, signal strength (RSSI), channel, and advertised authentication mode.
+
+### 3. 🔐 SHA-256 Experiment
+1. Open the Serial Monitor at **115200 baud**.
+2. Enter `help` to review the available commands.
+3. Run `hash <text>` with a sample message, for example `hash Hello World`.
+4. Record the resulting SHA-256 digest and compare it with a trusted SHA-256 implementation.
+
+### 4. 📝 Event Log Review
+1. Use the `logs` serial command to display available event logs.
+2. Use `status` to inspect the device status.
+3. Review the output when troubleshooting or validating a development change.
+
+### 5. 🖥️ Optional OLED Setup
+1. Connect an SSD1306 128×64 I²C display using the wiring table above.
+2. Double-check the pinout for your exact ESP32-S3 board revision.
+3. Power up the board and check the documented OLED status output.
+
+### 6. 🧪 Development and Validation
+1. Read [the architecture notes](docs/ARCHITECTURE.md) and [test plan](test/TEST_PLAN.md).
+2. Make one small change at a time.
+3. Build with `pio run`, then test the affected behavior on your own hardware.
+4. Document the result and any limitations before marking a feature as complete.
+
+> ⚠️ **Security note:** The setup access point uses a public development password, and the dashboard uses plain HTTP without login. Keep the device on an isolated lab setup; never expose it to the internet or an untrusted network. A Wi-Fi scan shows advertised network information and does not determine whether a network is vulnerable.
+
+---
 
 ## 🧰 Required Hardware
 
