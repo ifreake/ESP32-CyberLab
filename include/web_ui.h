@@ -22,7 +22,8 @@ private:
     String* hashValue = nullptr;
     NetworkMonitor* networkMonitor = nullptr;
     AppState* appState = nullptr;
-    String accessPassword;\n    String csrfToken;
+    String accessPassword;
+    String csrfToken;
     bool authorize();
     bool authorizeMutation();
     void routes();
