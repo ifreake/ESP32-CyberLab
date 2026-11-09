@@ -13,7 +13,7 @@ public:
                String* lastHash,
                NetworkMonitor* networkMonitor,
                AppState* state,
-               const String* accessPassword);
+               const String& accessPassword);
     void handleClient();
 private:
     WebServer server{80};
@@ -22,7 +22,8 @@ private:
     String* hashValue = nullptr;
     NetworkMonitor* networkMonitor = nullptr;
     AppState* appState = nullptr;
-    const String* accessPassword = nullptr;
+    String accessPassword;
     bool authorize();
+    bool authorizeMutation();
     void routes();
 };
