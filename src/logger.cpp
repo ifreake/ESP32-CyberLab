@@ -2,13 +2,29 @@
 #include "config.h"
 #include <LittleFS.h>
 
+static String csvEscape(const String& value) {
+    String escaped;
+    escaped.reserve(value.length() + 2);
+    escaped += '"';
+    for (size_t i = 0; i < value.length(); ++i) {
+        const char c = value[i];
+        if (c == '"') escaped += '"';
+        escaped += c;
+    }
+    escaped += '"';
+    return escaped;
+}
+
 bool EventLogger::begin() {
-    ready = LittleFS.begin(true);
+    // Never erase an existing log automatically when mounting fails.
+    ready = LittleFS.begin(false);
     if (ready && !LittleFS.exists(EVENT_LOG_PATH)) {
         File f = LittleFS.open(EVENT_LOG_PATH, FILE_WRITE);
         if (f) {
             f.println("timestamp_ms,level,message");
             f.close();
+        } else {
+            ready = false;
         }
     }
     return ready;
@@ -19,17 +35,14 @@ void EventLogger::log(const String& level, const String& message) {
     File f = LittleFS.open(EVENT_LOG_PATH, FILE_APPEND);
     if (!f) return;
 
-    String safe = message;
-    safe.replace(",", ";");
-    safe.replace("\n", " ");
-    f.printf("%lu,%s,%s\n", millis(), level.c_str(), safe.c_str());
+    f.printf("%lu,%s,%s\n", millis(), csvEscape(level).c_str(), csvEscape(message).c_str());
     f.close();
 
     File r = LittleFS.open(EVENT_LOG_PATH, FILE_READ);
     if (r && r.size() > MAX_LOG_BYTES) {
         r.close();
         String contents = readAll();
-        int cut = contents.indexOf('\n', contents.length() / 2);
+        const int cut = contents.indexOf('\n', contents.length() / 2);
         File w = LittleFS.open(EVENT_LOG_PATH, FILE_WRITE);
         if (w) {
             w.println("timestamp_ms,level,message");
