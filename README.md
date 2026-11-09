@@ -1,4 +1,4 @@
-<!-- ESP32 CyberLab • Red / Black Edition | Documentation only; firmware unchanged. -->
+<!-- ESP32 CyberLab • Red / Black Edition -->
 
 <div align="center">
 
@@ -98,7 +98,7 @@ Try these workflows to explore the documented ESP32-CyberLab features. Use only 
 3. Build with `pio run`, then test the affected behavior on your own hardware.
 4. Document the result and any limitations before marking a feature as complete.
 
-> ⚠️ **Security note:** The setup access point uses a public development password, and the dashboard uses plain HTTP without login. Keep the device on an isolated lab setup; never expose it to the internet or an untrusted network. A Wi-Fi scan shows advertised network information and does not determine whether a network is vulnerable.
+ > ⚠️ **Security note:** The setup AP now uses a randomly generated password on each boot, and dashboard pages/API routes require HTTP Basic Authentication. The dashboard still uses plain HTTP, so credentials are not encrypted in transit. Use it only on the isolated setup AP; never expose it to the internet or an untrusted network. A Wi-Fi scan shows advertised network information and does not determine whether a network is vulnerable.
 
 ---
 
@@ -193,7 +193,7 @@ After startup, the firmware is documented to create a local setup access point:
 | Setting | Value |
 |---|---|
 | Wi-Fi name (SSID) | `CyberLab-Setup` |
-| Development password | `LabSetup-2026` |
+| Dashboard username | `admin` |\n| Dashboard password | Random 16-character password printed to Serial Monitor on every boot |
 | Dashboard address | [http://192.168.4.1](http://192.168.4.1) |
 
 1. Power on the ESP32-S3.
@@ -201,7 +201,7 @@ After startup, the firmware is documented to create a local setup access point:
 3. Open a browser and visit `http://192.168.4.1`.
 4. Keep this setup network isolated and use it only in your own lab.
 
-🔴 **Security warning:** The listed password is a development default and is public because it appears in this documentation. Do not reuse it for a real deployment. The dashboard currently uses plain HTTP and has no user login; do not expose it to the internet or an untrusted LAN. Changing the documentation does not change the password stored in firmware.
+🔴 **Security warning:** The AP password is generated randomly at boot and printed only to the serial console; do not share that output. Dashboard pages and API endpoints require HTTP Basic Authentication (`admin` plus the generated password). HTTP is unencrypted, however, so credentials can be observed by anyone able to monitor that Wi-Fi link. Do not expose the dashboard beyond the isolated lab AP.
 
 ## ⌨️ Serial Commands
 
@@ -274,7 +274,7 @@ ESP32-CyberLab/
 | Board is not detected | Try a known-good USB data cable, another USB port, and the correct USB-to-serial driver |
 | Upload fails | Confirm the selected serial port; close other apps using that port; retry with the board's BOOT procedure if required |
 | Serial output is unreadable | Set the monitor speed to **115200 baud** |
-| Dashboard does not open | Confirm that you joined `CyberLab-Setup` and entered `http://192.168.4.1` |
+| Dashboard does not open | Confirm that you joined `CyberLab-Setup` and entered `http://192.168.4.1`; authenticate as `admin` using the password printed in the Serial Monitor after the latest boot |
 | OLED stays blank | Check VCC, GND, SDA, SCL, board pinout, and the display's I²C compatibility |
 
 ## 🧪 Roadmap
